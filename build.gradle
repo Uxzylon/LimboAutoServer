@@ -1,0 +1,44 @@
+plugins {
+    id 'java'
+}
+
+group = 'fr.jeanney'
+version = '1.0.0'
+
+base {
+    archivesName = 'limboautoserver-velocity'
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'papermc'
+        url = 'https://repo.papermc.io/repository/maven-public/'
+    }
+    maven {
+        name = 'elytrium'
+        url = 'https://maven.elytrium.net/repo/'
+    }
+    maven {
+        name = 'sonatype-snapshots'
+        url = 'https://oss.sonatype.org/content/repositories/snapshots/'
+    }
+}
+
+dependencies {
+    compileOnly "com.velocitypowered:velocity-api:${project.velocity_api_version}"
+    annotationProcessor "com.velocitypowered:velocity-api:${project.velocity_api_version}"
+
+    // Provided at runtime by the LimboAPI plugin.
+    compileOnly "net.elytrium.limboapi:api:${project.limboapi_version}"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.encoding = 'UTF-8'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
