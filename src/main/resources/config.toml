@@ -1,0 +1,54 @@
+# LimboAutoServer configuration
+#
+# Lazy-starts backend servers when a player connects, and holds the player in a
+# LimboAPI virtual world while the server boots (instead of letting the client
+# time out during login). When the backend is responsive the player is
+# transferred to it. Empty backends are stopped again after an idle delay.
+
+# How often (in minutes) to re-check running servers and (re)schedule idle shutdowns.
+maintenanceInterval = 5
+
+[logging]
+# TRACE, DEBUG, INFO, WARN, ERROR
+level = "INFO"
+
+# The limbo "waiting room" players see while the backend starts.
+[limbo]
+# OVERWORLD, NETHER or THE_END
+dimension = "OVERWORLD"
+# SURVIVAL, CREATIVE, ADVENTURE or SPECTATOR
+gameMode = "ADVENTURE"
+# World time in ticks (1000 = morning, 18000 = night).
+worldTime = 1000
+# Spawn position / rotation inside the (empty) limbo world.
+posX = 0.0
+posY = 100.0
+posZ = 0.0
+yaw = 0.0
+pitch = 0.0
+
+# Messages support MiniMessage formatting. Placeholders: %serverName%.
+[messages]
+prefix = "<gray>[</gray><gold>LimboAutoServer</gold><gray>]</gray> "
+starting = "<yellow>%serverName% is starting, please wait...</yellow>"
+failed = "<red>%serverName% could not be started.</red>"
+notify = "<green>%serverName% is ready. Connecting...</green>"
+
+[servers]
+
+# One block per backend server (the name must match the server name in velocity.toml).
+[servers.host]
+# Working directory the start/stop commands run in (relative to the Velocity dir).
+workingDirectory = "../"
+# Command used to start the server.
+start = "bash start.sh start"
+# Command used to stop the server.
+stop = "bash start.sh stop"
+# Seconds to wait after launching before the first responsiveness ping.
+startupDelay = 1
+# Seconds to wait after issuing the stop command before confirming it stopped.
+shutdownDelay = 30
+# Seconds the server may sit empty before it is automatically stopped (-1 disables).
+autoShutdownDelay = 1800
+# Keep quotes in the start/stop command tokens (useful for paths with spaces).
+preserveQuotes = true
