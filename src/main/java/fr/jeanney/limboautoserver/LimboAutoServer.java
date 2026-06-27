@@ -8,6 +8,7 @@ import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.player.KickedFromServerEvent;
 import com.velocitypowered.api.event.player.ServerPostConnectEvent;
+import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Dependency;
@@ -118,6 +119,20 @@ public class LimboAutoServer {
                         event.addOnJoinCallback(() -> limboManager.spawnIntoLimbo(player, target));
                     }
                 }));
+    }
+
+    /**
+     * A player is heading to a server (initial join, server switch, or the
+     * transfer out of limbo). Cancel any pending auto-shutdown for that server so
+     * it is not stopped out from under a returning player.
+     */
+    @Subscribe
+    public void onServerPreConnect(ServerPreConnectEvent event) {
+        if (!event.getResult().isAllowed()) {
+            return;
+        }
+        RegisteredServer target = event.getResult().getServer().orElse(event.getOriginalServer());
+        serverManager.cancelShutdownServer(target);
     }
 
     @Subscribe
