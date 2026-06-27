@@ -59,7 +59,11 @@ public class LimboManager {
         Limbo newLimbo = factory.createLimbo(world)
                 .setName("LimboAutoServer")
                 .setWorldTime(config.getLimboWorldTime())
-                .setGameMode(gameMode);
+                .setGameMode(gameMode)
+                // Independent of Velocity's global read-timeout: LimboAPI sends a
+                // keep-alive every readTimeout/2 ms, which must stay under the
+                // client's 30s timeout or players get "Timed out" while waiting.
+                .setReadTimeout(config.getLimboReadTimeout());
 
         Limbo previous = this.limbo;
         this.limbo = newLimbo;
