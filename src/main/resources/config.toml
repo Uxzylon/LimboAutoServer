@@ -8,6 +8,10 @@
 # How often (in minutes) to re-check running servers and (re)schedule idle shutdowns.
 maintenanceInterval = 5
 
+# Timeout (ms) for the quick "is the backend up?" ping done during login. Kept
+# generous so a freshly-started, heavily-loaded server is not wrongly seen as offline.
+responsivenessTimeout = 1000
+
 [logging]
 # TRACE, DEBUG, INFO, WARN, ERROR
 level = "INFO"
@@ -26,6 +30,18 @@ posY = 100.0
 posZ = 0.0
 yaw = 0.0
 pitch = 0.0
+# Limbo connection read timeout (ms). LimboAPI sends a keep-alive every
+# readTimeout/2 ms, so this MUST stay well under the vanilla client's 30s timeout,
+# independently of Velocity's global read-timeout. 20000 -> keep-alive every 10s.
+readTimeout = 20000
+# Show a boss bar that fills while the backend starts.
+progressBar = true
+# Rough estimate (seconds) of how long the backend takes to boot. Only drives how
+# fast the boss bar fills; the actual transfer still waits for a real ping.
+estimatedStartupSeconds = 60
+# Boss bar titles (MiniMessage). Placeholders: %serverName%, %time% (elapsed seconds).
+progressTitle = "<gold>Starting %serverName%...</gold> <gray>(%time%s)</gray>"
+progressReadyTitle = "<green>%serverName% is ready!</green>"
 
 # Messages support MiniMessage formatting. Placeholders: %serverName%.
 [messages]

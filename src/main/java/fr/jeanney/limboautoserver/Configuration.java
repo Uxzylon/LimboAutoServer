@@ -94,8 +94,13 @@ public class Configuration {
         return config.getLong("maintenanceInterval", 5L);
     }
 
-    public long getStartRateLimit() {
-        return config.getLong("startRateLimit", 6L);
+    /**
+     * Timeout (ms) for the quick "is this server responsive?" ping done during
+     * login. Kept generous so a freshly-started, heavily-loaded backend is not
+     * wrongly reported offline.
+     */
+    public int getResponsivenessTimeout() {
+        return config.getLong("responsivenessTimeout", 1000L).intValue();
     }
 
     // ----- limbo settings -----
@@ -110,6 +115,35 @@ public class Configuration {
 
     public long getLimboWorldTime() {
         return config.getLong("limbo.worldTime", 1000L);
+    }
+
+    /**
+     * Read timeout (ms) for the limbo connection. LimboAPI sends a keep-alive
+     * every {@code readTimeout / 2} ms, so this MUST stay well below the vanilla
+     * client timeout of 30s, regardless of Velocity's global {@code read-timeout}.
+     */
+    public int getLimboReadTimeout() {
+        return config.getLong("limbo.readTimeout", 20000L).intValue();
+    }
+
+    public boolean isProgressBarEnabled() {
+        return config.getBoolean("limbo.progressBar", true);
+    }
+
+    /**
+     * Rough estimate (seconds) of how long the backend takes to boot. Only used
+     * to drive the progress bar fill; the transfer still waits for a real ping.
+     */
+    public long getEstimatedStartupSeconds() {
+        return config.getLong("limbo.estimatedStartupSeconds", 60L);
+    }
+
+    public String getProgressTitle() {
+        return config.getString("limbo.progressTitle", "<gold>Starting %serverName%...</gold> <gray>(%time%s)</gray>");
+    }
+
+    public String getProgressReadyTitle() {
+        return config.getString("limbo.progressReadyTitle", "<green>%serverName% is ready!</green>");
     }
 
     public double getLimboPosX() {

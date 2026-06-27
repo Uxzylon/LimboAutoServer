@@ -145,7 +145,7 @@ public class ServerManager {
             logger.debug("Players detected on server '{}', assuming ONLINE", serverName);
             return CompletableFuture.completedFuture(true);
         }
-        return pingServer(server, 50);
+        return pingServer(server, plugin.getConfig().getResponsivenessTimeout());
     }
 
     public ServerStatus getServerStatus(RegisteredServer server) {
