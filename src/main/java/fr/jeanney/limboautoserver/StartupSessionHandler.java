@@ -139,11 +139,10 @@ public class StartupSessionHandler implements LimboSessionHandler {
     @Override
     public void onDisconnect() {
         stopProgressBar();
-        // Player left the limbo (either transferred or quit). If they quit before
-        // the server finished booting and nobody else is waiting, schedule shutdown.
-        if (!transferring && target.getPlayersConnected().isEmpty()
-                && !plugin.getServerManager().isStarting(target)) {
-            plugin.getServerManager().scheduleShutdownServer(target);
+        // Player left the limbo. If they quit (rather than being transferred),
+        // re-evaluate idle shutdowns once they have been removed from the counts.
+        if (!transferring) {
+            plugin.scheduleShutdownEvaluation();
         }
     }
 }

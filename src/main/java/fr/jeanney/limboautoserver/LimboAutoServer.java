@@ -17,7 +17,6 @@ import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
-import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import fr.jeanney.limboautoserver.commands.LimboAutoServerCommand;
 import net.elytrium.limboapi.api.event.LoginLimboRegisterEvent;
@@ -123,8 +122,8 @@ public class LimboAutoServer {
 
     /**
      * A player is heading to a server (initial join, server switch, or the
-     * transfer out of limbo). Cancel any pending auto-shutdown for that server so
-     * it is not stopped out from under a returning player.
+     * transfer out of limbo). Cancel any pending auto-shutdown for that server,
+     * and for any "requires empty proxy" server, since the proxy now has a player.
      */
     @Subscribe
     public void onServerPreConnect(ServerPreConnectEvent event) {
@@ -133,42 +132,41 @@ public class LimboAutoServer {
         }
         RegisteredServer target = event.getResult().getServer().orElse(event.getOriginalServer());
         serverManager.cancelShutdownServer(target);
+        // A connecting player makes the proxy non-empty, so backbone servers must
+        // not be sitting on a shutdown timer (e.g. when joining a cluster directly).
+        for (RegisteredServer server : proxy.getAllServers()) {
+            if (config.getAutoShutdownRequiresEmptyProxy(server)) {
+                serverManager.cancelShutdownServer(server);
+            }
+        }
     }
 
     @Subscribe
     public void onServerPostConnect(ServerPostConnectEvent event) {
-        RegisteredServer previousServer = event.getPreviousServer();
-        if (previousServer != null && previousServer.getPlayersConnected().isEmpty()) {
-            serverManager.scheduleShutdownServer(previousServer);
-        }
+        // A player left their previous server; re-evaluate idle shutdowns.
+        scheduleShutdownEvaluation();
     }
 
     @Subscribe
     public void onDisconnect(DisconnectEvent event) {
-        Player player = event.getPlayer();
-        Optional<ServerConnection> serverConnection = player.getCurrentServer();
-        if (serverConnection.isEmpty()) {
-            return;
-        }
-        RegisteredServer server = serverConnection.get().getServer();
-        // Count manually to avoid a race where the disconnecting player is still listed.
-        int others = 0;
-        for (Player p : server.getPlayersConnected()) {
-            if (!p.getUniqueId().equals(player.getUniqueId())) {
-                others++;
-            }
-        }
-        if (others <= 0) {
-            serverManager.scheduleShutdownServer(server);
-        }
+        // Defer so the leaving player is no longer counted in the proxy/server totals.
+        scheduleShutdownEvaluation();
     }
 
     @Subscribe
     public void onPlayerKicked(KickedFromServerEvent event) {
-        RegisteredServer server = event.getServer();
-        if (server.getPlayersConnected().isEmpty()) {
-            serverManager.scheduleShutdownServer(server);
-        }
+        scheduleShutdownEvaluation();
+    }
+
+    /**
+     * Re-evaluates idle shutdowns on a short delay, so any player who just left has
+     * already been removed from the proxy/server player counts.
+     */
+    public void scheduleShutdownEvaluation() {
+        proxy.getScheduler()
+                .buildTask(this, () -> serverManager.evaluateShutdowns())
+                .delay(1, TimeUnit.SECONDS)
+                .schedule();
     }
 
     /**

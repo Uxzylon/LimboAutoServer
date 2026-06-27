@@ -160,20 +160,47 @@ public class ServerManager {
         return serverStatusCache.get(serverName);
     }
 
-    public boolean isStarting(RegisteredServer server) {
-        return startupFutures.containsKey(server.getServerInfo().getName());
+    /**
+     * Whether a server is currently eligible to be auto-shut-down.
+     *
+     * <p>By default a server is eligible when it has no players. A server flagged
+     * with {@code autoShutdownRequiresEmptyProxy} is only eligible when the whole
+     * proxy is empty (no players on any backend), so a backbone/lobby server is
+     * not stopped while players are off in other (e.g. cluster) backends.</p>
+     */
+    public boolean isEligibleForShutdown(RegisteredServer server) {
+        if (plugin.getConfig().getAutoShutdownRequiresEmptyProxy(server)) {
+            return plugin.getProxy().getPlayerCount() == 0;
+        }
+        return server.getPlayersConnected().isEmpty();
     }
 
     /**
-     * Schedules the server for shutdown after the configured idle delay.
+     * Re-evaluates every managed server and schedules a shutdown for any that is
+     * now eligible. Safe to call from any connection event; each call self-gates.
+     */
+    public void evaluateShutdowns() {
+        for (RegisteredServer server : plugin.getProxy().getAllServers()) {
+            scheduleShutdownServer(server);
+        }
+    }
+
+    /**
+     * Schedules the server for shutdown after the configured idle delay, provided
+     * it is managed, online and currently {@link #isEligibleForShutdown eligible}.
      */
     public void scheduleShutdownServer(RegisteredServer server) {
         assert server != null;
         String serverName = server.getServerInfo().getName();
-        logger.trace("scheduleShutdownServer: {}", serverName);
 
         long autoShutdownDelay = plugin.getConfig().getAutoShutdownDelay(server);
         if (autoShutdownDelay <= 0) {
+            return;
+        }
+        if (getServerStatus(server).is(ServerStatus.Status.STOPPED)) {
+            return;
+        }
+        if (!isEligibleForShutdown(server)) {
             return;
         }
         if (shutdownScheduledTask.containsKey(serverName)) {
@@ -185,7 +212,7 @@ public class ServerManager {
         ScheduledTask scheduledTask = plugin.getProxy().getScheduler()
                 .buildTask(plugin, () -> {
                     shutdownScheduledTask.remove(serverName);
-                    if (!server.getPlayersConnected().isEmpty()) {
+                    if (!isEligibleForShutdown(server)) {
                         logger.debug("Skipping shutdown of {}: players present.", serverName);
                         return;
                     }
@@ -218,7 +245,7 @@ public class ServerManager {
                 continue;
             }
             pingServer(server, 5000).thenApply(isOnline -> {
-                if (isOnline && server.getPlayersConnected().isEmpty()) {
+                if (isOnline) {
                     scheduleShutdownServer(server);
                 }
                 return null;

@@ -84,6 +84,15 @@ public class Configuration {
         return config.getLong(serverKey(server, "autoShutdownDelay"), DEFAULT_AUTO_SHUTDOWN_DELAY);
     }
 
+    /**
+     * When true, this server is only auto-shut-down once the entire proxy is empty
+     * (no players on any backend), rather than just when this server is empty.
+     * Useful for a backbone/lobby server that other backends depend on.
+     */
+    public boolean getAutoShutdownRequiresEmptyProxy(RegisteredServer server) {
+        return config.getBoolean(serverKey(server, "autoShutdownRequiresEmptyProxy"), false);
+    }
+
     // ----- global settings -----
 
     public String getLogLevel() {

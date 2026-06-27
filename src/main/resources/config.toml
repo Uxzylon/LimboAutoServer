@@ -66,5 +66,10 @@ startupDelay = 1
 shutdownDelay = 30
 # Seconds the server may sit empty before it is automatically stopped (-1 disables).
 autoShutdownDelay = 1800
+# Only auto-shutdown once the WHOLE proxy is empty (no players on host OR any
+# cluster), instead of just when this server is empty. Keep true for a backbone
+# server that clusters depend on, so it is never stopped while players are in a
+# cluster; it still stops when nobody is connected anywhere.
+autoShutdownRequiresEmptyProxy = true
 # Keep quotes in the start/stop command tokens (useful for paths with spaces).
 preserveQuotes = true
