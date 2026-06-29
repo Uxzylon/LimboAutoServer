@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 @Plugin(
         id = "limboautoserver",
         name = "LimboAutoServer",
-        version = "1.0.0",
+        version = BuildConstants.VERSION,
         description = "Lazy-starts backend servers and holds players in a LimboAPI virtual world while the server boots, preventing login timeouts.",
         authors = {"Uxzylon"},
         dependencies = {@Dependency(id = "limboapi")}
