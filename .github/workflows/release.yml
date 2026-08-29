@@ -1,0 +1,111 @@
+name: Publish
+run-name: Publish ${{ inputs.release_type }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: Release channel
+        required: true
+        default: beta
+        type: choice
+        options:
+          - beta
+          - release
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Require main branch
+        if: github.ref_name != 'main'
+        run: |
+          echo "Releases must be started from the main branch."
+          exit 1
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Resolve version
+        id: release
+        shell: bash
+        env:
+          RELEASE_TYPE: ${{ inputs.release_type }}
+        run: |
+          set -euo pipefail
+
+          property() {
+            sed -n "s/^$1=//p" gradle.properties | tail -n 1
+          }
+
+          base="$(property mod_version)"
+          minecraft_version="$(property minecraft_version)"
+          [[ -n "$base" && -n "$minecraft_version" ]]
+
+          if [[ "$RELEASE_TYPE" == "release" ]]; then
+            version="$base"
+          else
+            stem="v${base}-beta."
+            highest=0
+            while IFS= read -r tag; do
+              suffix="${tag#"$stem"}"
+              if [[ "$suffix" =~ ^[0-9]+$ ]] && (( suffix > highest )); then
+                highest="$suffix"
+              fi
+            done < <(git tag --list "${stem}*")
+            version="${base}-beta.$((highest + 1))"
+          fi
+
+          tag="v${version}"
+          if git rev-parse --verify --quiet "refs/tags/$tag" >/dev/null; then
+            echo "Git tag '$tag' already exists. Update mod_version in gradle.properties first."
+            exit 1
+          fi
+
+          {
+            echo "version=$version"
+            echo "tag=$tag"
+            echo "minecraft_version=$minecraft_version"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Publishing $tag"
+
+      - name: Build
+        run: ./gradlew clean build -Pmod_version=${{ steps.release.outputs.version }}
+
+      - name: Publish
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          modrinth-id: limboautoserver
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          modrinth-featured: false
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-tag: ${{ steps.release.outputs.tag }}
+          github-prerelease: ${{ inputs.release_type == 'beta' }}
+          files: build/libs/!(*-@(dev|sources|javadoc)).jar
+          name: LimboAutoServer ${{ steps.release.outputs.version }}
+          version: ${{ steps.release.outputs.version }}
+          version-type: ${{ inputs.release_type }}
+          loaders: velocity
+          game-versions: ${{ steps.release.outputs.minecraft_version }}
+          dependencies: limboapi@*(required){modrinth:limboapi}
+          java: 17
